@@ -21,7 +21,7 @@ from rdkit.Chem.rdmolfiles import CanonicalRankAtoms
 from openbabel import pybel as pb
 RDLogger.DisableLog('rdApp.*') # Suppress warnings from rdkit
 
-from const import fp, ignored_uids, max_n_atoms, num_unique_atoms, a2i, hyb2int, bondtype2int
+from sac2021.const import fp, ignored_uids, max_n_atoms, num_unique_atoms, a2i, hyb2int, bondtype2int
 
 class SACData(Dataset):
     # self.version = '0.0.1'
@@ -37,7 +37,7 @@ class SACData(Dataset):
 
     version = '0.1.0' # Finalized.
 
-    def __init__(self, idx=None, augs=[], meta=fp['train_meta'], data=fp['train_data'], pretrain=False, infer=False):
+    def __init__(self, idx=None, augs=[], meta=fp['train_meta'], data=fp['train_data'], pretrain=False):
         super(SACData, self).__init__()
 
         self.augs = augs
@@ -58,7 +58,6 @@ class SACData(Dataset):
         self.factory = ChemicalFeatures.BuildFeatureFactory(fdefName) # Needed for donor/acceptor features.
 
         self.pretrain = pretrain
-        self.infer = infer
 
     def __getitem__(self, i):
         m = self.meta[i]
@@ -68,8 +67,7 @@ class SACData(Dataset):
 
         n_atoms = mol.GetNumAtoms()
         # note that idx for dummy atom is added as [num_unique_atoms]
-        # atom_idx = torch.tensor([a2i.get(a.GetSymbol(), 1) for a in mol.GetAtoms()] + [num_unique_atoms] + [-1] * (max_n_atoms - n_atoms - 1), dtype=torch.long)
-        atom_idx = torch.tensor([a2i.get(a.GetSymbol(), 1) for a in mol.GetAtoms()] + [-1] * (max_n_atoms - n_atoms), dtype=torch.long)
+        atom_idx = torch.tensor([a2i.get(a.GetSymbol(), 1) for a in mol.GetAtoms()] + [num_unique_atoms] + [-1] * (max_n_atoms - n_atoms - 1), dtype=torch.long)
 
         xyz = self._get_atom_xyz(mol, pad=max_n_atoms - n_atoms)
 
@@ -87,8 +85,8 @@ class SACData(Dataset):
             # pdist_mu, pdist_var = pdist[:n_atoms, :n_atoms].mean(), pdist[:n_atoms, :n_atoms].var()
             # pdist = (pdist - pdist_mu) / pdist_var
         # set distance to dummy node as 1e6
-        # pdist[n_atoms] = 1e6
-        # pdist[:, n_atoms] = 1e6
+        pdist[n_atoms] = 1e6
+        pdist[:, n_atoms] = 1e6
 
         # pdist[:n_atoms + 1, :n_atoms + 1] = torch.exp(-pdist[:n_atoms + 1, :n_atoms + 1])
 
@@ -178,24 +176,6 @@ class SACData(Dataset):
             npr1,
             npr2
         ], dim=-1)
-
-        if self.infer:
-            item = {
-                'mask': mask.bool(),
-                'out_mask': mask_1d.bool(),
-                'n_atoms': mask_1d.sum(),
-                'atom_idx': atom_idx.long(),
-                'hyb': hyb,
-                'donac': donor_acceptor,
-                'spin': spin,
-                'pdist': pdist,
-                'sym': sym_mat,
-                'angle': angle,
-                'adj': adj,
-                'feat': feat,
-                'fp': fp,
-            }
-            return item
 
         if self.pretrain:
             item = {

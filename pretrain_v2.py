@@ -10,14 +10,13 @@ import numpy as np
 import pandas as pd
 
 from torch.utils.data import DataLoader
-from sac2021.sac2021 import AtomTransformerPretrain as AtomTransformer
-from sac2021.data import SACData
+from net_v2 import AtomTransformerPretrain as AtomTransformer
+from data_v2 import SACData
 from sklearn.model_selection import KFold
 
-import sac2021.const as const
-import sac2021.loss as loss
-
-from sac2021.scheduler import GradualWarmupScheduler
+import const
+import loss
+from scheduler import GradualWarmupScheduler
 
 torch.autograd.set_detect_anomaly(True)
 
