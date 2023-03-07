@@ -15,6 +15,8 @@ WIP
     - [QM9](http://quantum-machine.org/datasets/) (n=133,246)
     - [OE62](https://www.nature.com/articles/s41597-020-0385-y) (n=61,191)
 
+- Pretraining에 사용한 molecule sdf 데이터는 [여기](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data%2Fpretrain_sdf.tar.gz)에서 다운로드 받을 수 있습니다.
+
 **Fine-tuning**
 - 사전학습된 stem을 이용합니다.
 - 제공된 학습 데이터로 S1-T1 gap과, S1, T1 각각의 값을 예측하는 regression head를 학습합니다.
