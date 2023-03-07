@@ -20,7 +20,11 @@ WIP
 - 제공된 학습 데이터로 S1-T1 gap과, S1, T1 각각의 값을 예측하는 regression head를 학습합니다.
     - Gap, S1, T1 regression은 MAE loss를 사용합니다.
     - Gap의 weight는 1.0이고, S1, T1 regression의 weight는 0.05로 학습합니다.
+- 첫 9 epoch은 pretrained weight를 freeze 시킨 상태로 학습하고, 10 epoch 부터 weight unfreeze 후 모든 weight를 업데이트 시킵니다.
 
+- Optimizer = `AdamW(lr=3e-5)`
+- Scheduler = `ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=15, threshold=0.005, threshold_mode='rel')`
+- Batch size = 64
 
 ## 3. 설치 및 사용법
 본 솔루션 코드 및 모델은 PyPI에 배포되어 있습니다. 다음과 같이 설치할 수 있습니다.

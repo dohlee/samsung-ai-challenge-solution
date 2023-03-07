@@ -95,6 +95,7 @@ net = AtomTransformer(config.n_layers, config.n_heads, config.d_model, config.d_
 # Load checkpoint.
 ckpt = torch.load(args.ckpt)
 net.load_state_dict(ckpt['net'], strict=False)
+
 # Freeze parameters. Will be unfreezed later.
 for param in net.atom_embedding.parameters():
     param.requires_grad = False
@@ -115,10 +116,6 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.5, 
     patience=15, threshold=0.005, threshold_mode='rel'
 )
-# scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    # optimizer, milestones=[20, 30, 40, 50, 60], gamma=0.5,
-# )
-# scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=10, after_scheduler=scheduler)
 
 train_dataset = SACData(idx=train_idx, augs=args.augs)
 val_dataset = SACData(idx=val_idx)
@@ -137,6 +134,7 @@ best_val_mae, val_mae = 10000, 10000
 for epoch in range(1, 201):
     scheduler.step(val_mae)
 
+    # Unfreeze weights after 9 epochs
     if epoch == 10:
         for param in net.atom_embedding.parameters():
             param.requires_grad = True
@@ -148,9 +146,6 @@ for epoch in range(1, 201):
             param.requires_grad = True
         for param in net.transformer.parameters():
             param.requires_grad = True
-    # scheduler.step(epoch=epoch, metrics=val_mae)
-    # print(f'LR={get_lr(optimizer)}')
-    # print(scheduler.get_lr())
 
     # losses
     running_gap_loss = 0.0
@@ -162,6 +157,7 @@ for epoch in range(1, 201):
     running_gap_mae_secondary = 0.0
     running_gap_mae_tertiary = 0.0
 
+    # Train
     net.train()
     for batch, data in enumerate(train_loader, 1):
         for k, v in data.items():
@@ -189,8 +185,8 @@ for epoch in range(1, 201):
         gap_loss = criterion(gap_out, gap_target.view(_bsz, 1))
         s1_loss = criterion(s1_out, s1_target.view(_bsz, 1))
         t1_loss = criterion(t1_out, t1_target.view(_bsz, 1))
+
         loss = gap_loss + 0.05 * (s1_loss + t1_loss)
-        # loss = s1_loss + t1_loss
 
         running_gap_loss += gap_loss.detach().item()
         running_s1_loss += s1_loss.detach().item()
@@ -237,6 +233,7 @@ for epoch in range(1, 201):
             }
             wandb.log(log_dict)
 
+    # Validate
     net.eval()
     val_gap_outs, val_s1_outs, val_t1_outs = [], [], []
     val_gap_targets, val_s1_targets, val_t1_targets = [], [], []

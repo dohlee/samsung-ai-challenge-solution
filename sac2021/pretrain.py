@@ -28,7 +28,6 @@ def get_lr(optimizer):
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', '-o', required=True)
-    # parser.add_argument('--ckpt', required=True)
     parser.add_argument('--model-id', required=True)
     parser.add_argument('--fold', type=int, required=True)
     parser.add_argument('--loss', required=True)
@@ -60,8 +59,6 @@ if args.debug:
 meta = pd.read_csv(const.fp['pretrain_meta'])
 meta = meta[~meta.uid.isin(const.ignored_uids)].reset_index(drop=True)
 
-# td_meta = meta[(meta.uid.str.startswith('train')) | (meta.uid.str.startswith('dev'))].reset_index(drop=True)
-
 losses = {
     'mse': nn.MSELoss,
     'mae': nn.L1Loss,
@@ -91,18 +88,6 @@ print('train', len(train_idx))
 print('val', len(val_idx))
 
 net = AtomTransformer(config.n_layers, config.n_heads, config.d_model, config.d_ff)
-# Load checkpoint.
-# ckpt = torch.load(args.ckpt)
-# net.load_state_dict(ckpt['net'], strict=False)
-# Freeze parameters. Will be unfreezed later.
-# for param in net.atom_embedding.parameters():
-    # param.requires_grad = False
-# for param in net.transformer.parameters():
-    # param.requires_grad = False
-
-# for i in [-1, -2, -3]:
-    # for param in net.transformer.layers[i].parameters():
-        # param.requires_grad = True
 net.cuda()
 
 wandb.watch(net, log='all')
@@ -111,10 +96,6 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.5, 
     patience=10, threshold=0.005, threshold_mode='abs'
 )
-# scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    # optimizer, milestones=[20, 30, 40, 50, 60], gamma=0.5,
-# )
-# scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=10, after_scheduler=scheduler)
 
 train_dataset = SACData(idx=train_idx, augs=args.augs, pretrain=True)
 val_dataset = SACData(idx=val_idx, pretrain=True)
@@ -132,9 +113,6 @@ optimizer.step()
 best_val_mae, val_mae = 10000, 10000
 for epoch in range(1, 71):
     scheduler.step(val_mae)
-    # scheduler.step(epoch=epoch, metrics=val_mae)
-    # print(f'LR={get_lr(optimizer)}')
-    # print(scheduler.get_lr())
 
     # losses
     running_homo_loss = 0.0
