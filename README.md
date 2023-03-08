@@ -14,7 +14,7 @@ WIP
 - 아래의 데이터셋을 이용하여 HOMO 및 LUMO를 예측하는 멀티태스크 사전학습을 수행합니다.
     - [QM9](http://quantum-machine.org/datasets/) (n=133,246)
     - [OE62](https://www.nature.com/articles/s41597-020-0385-y) (n=61,191)
-- Pretraining에 사용한 molecule sdf 데이터는 [여기](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data%2Fpretrain_sdf.tar.gz)에서 다운로드 받을 수 있습니다.
+    -  Pretraining에 사용한, 프로세싱 완료된 molecule sdf 데이터는 [여기](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data%2Fpretrain_sdf.tar.gz)에서 다운로드 받을 수 있습니다.
 
 **Fine-tuning**
 - 사전학습된 stem을 이용합니다.
@@ -27,7 +27,9 @@ WIP
 - Batch size = 64
 
 ## 3. 설치 및 사용법
-본 솔루션 코드 및 모델은 PyPI에 배포되어 있습니다. 다음과 같이 설치할 수 있습니다.
+본 솔루션 코드 및 모델은 PyPI에 배포되어 있습니다. 모델은 다음과 같이 설치할 수 있습니다.
+- 사용에 앞서서 `rdkit`, `openbabel` 패키지가 환경에 설치되어 있어야 합니다.
+
 ```bash
 $ pip install sac2021
 ```

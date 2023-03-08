@@ -14,13 +14,11 @@ class MultiHeadAttention(nn.Module):
         self.bias, self.scale = bias, scale
         
         self.gamma_p = nn.Parameter(torch.ones([n_heads]))
-        self.gamma_sym = nn.Parameter(torch.ones([n_heads]))
         self.gamma_adj = nn.Parameter(torch.ones([n_heads]))
 
         self.w_bias = nn.Linear(2, n_heads, bias=False)
 
         self.att = nn.Linear(d_model, 3 * n_heads * d_head, bias=False)  # LinearNoBias for attention
-        # self.gate = nn.Sequential(nn.Linear(d_model, n_heads * d_head), nn.Sigmoid())
         self.ff = nn.Linear(n_heads * d_head, d_model, bias=bias)
 
         self.drop_att, self.drop_res = nn.Dropout(att_p), nn.Dropout(res_p)
@@ -61,10 +59,6 @@ class MultiHeadAttention(nn.Module):
         gamma_p = self.gamma_p.unsqueeze(1).unsqueeze(2).expand(self.n_heads, n_atoms, n_atoms).unsqueeze(0).expand(bsz, self.n_heads, n_atoms, n_atoms)
         att_score -= gamma_p * pdist
 
-        # sym = sym.unsqueeze(1).expand(bsz, self.n_heads, n_atoms, n_atoms)
-        # gamma_sym = self.gamma_sym.unsqueeze(1).unsqueeze(2).expand(self.n_heads, n_atoms, n_atoms).unsqueeze(0).expand(bsz, self.n_heads, n_atoms, n_atoms)
-        # att_score -= gamma_sym * sym
-
         angle = angle.view(-1, 2) # (bsz * n_atoms * n_atoms) x 2
         angle = self.w_bias(angle) # (bsz * n_atoms * n_atoms) x n_heads
         angle = angle.view(bsz, n_atoms, n_atoms, self.n_heads).permute(0, 3, 1, 2)
@@ -86,7 +80,6 @@ class MultiHeadAttention(nn.Module):
         # --> att_vec : bsz x n_atoms x (h_heads * d_head)
 
         return att_vec
-        # return att_vec * self.gate(att_vec)
 
 class FeedForward(nn.Module):
     def __init__(self, d_model, d_ff):
@@ -104,9 +97,7 @@ class AttentionBlock(nn.Module):
         self.self_att = MultiHeadAttention(n_heads, d_model, idx, res_p, att_p, bias, scale)
         self.ff = FeedForward(d_model, d_ff)
     
-    # def forward(self, x, pdist, sym, angle, adj, mask=None):
     def forward(self, x, pdist, angle, adj, mask=None):
-        # return self.ff(self.self_att(x, pdist, sym, angle, adj, mask))
         return self.ff(self.self_att(x, pdist, angle, adj, mask))
 
 class Transformer(nn.Module):
@@ -116,10 +107,8 @@ class Transformer(nn.Module):
             AttentionBlock(n_heads, d_model, d_ff, idx=i, res_p=res_p, att_p=att_p) for i in range(n_layers)
         ])
 
-    # def forward(self, x, pdist, sym, angle, adj, mask):
     def forward(self, x, pdist, angle, adj, mask):
         for layer in self.layers:
-            # x = layer(x, pdist, sym, angle, adj, mask=mask)
             x = layer(x, pdist, angle, adj, mask=mask)
         return x
 
@@ -140,14 +129,13 @@ class AtomTransformer(nn.Module):
         # 1 for totalnumH
         # 1 for total valence
         # 2 for molecule features (NPR1, NPR2)
-        self.atom_embedding = nn.Embedding(num_unique_atoms + 1 + 1, atom_embedding_size) # +1 for dummy node
+        self.atom_embedding = nn.Embedding(num_unique_atoms + 1 + 1, atom_embedding_size) # +1 for dummy node, +1 for [PAD]
         self.hyb_embedding = nn.Linear(7, hyb_embedding_size, bias=False)
         self.donac_embedding = nn.Linear(2, donac_embedding_size, bias=False)
         self.spin_embedding = nn.Linear(2, spin_embedding_size, bias=False)
 
         n_head_feature = d_model * 3
         self.gap_head = nn.Sequential(
-            # nn.Linear(n_head_feature, 256),
             nn.Linear(n_head_feature, 16),
             nn.ReLU(),
             nn.Linear(16, 1),
@@ -167,15 +155,14 @@ class AtomTransformer(nn.Module):
     
     # def forward(self, atom_idx, hyb, donac, spin, feat, fp, pdist, sym, angle, adj, mask, out_mask, n_atoms):
     def forward(self, atom_idx, hyb, donac, spin, feat, pdist, angle, adj, mask, out_mask, n_atoms):
-        a = self.atom_embedding(atom_idx + 1)
+        atom = self.atom_embedding(atom_idx + 1)
         hyb = self.hyb_embedding(hyb)
         donac = self.donac_embedding(donac)
         spin = self.spin_embedding(spin)
 
-        x = torch.cat([feat, a, hyb, donac, spin], dim=-1)
+        x = torch.cat([feat, atom, hyb, donac, spin], dim=-1)
         
         # x : bsz x max_n_atoms x model
-        # x = self.transformer(x, pdist, sym, angle, adj, mask)
         x = self.transformer(x, pdist, angle, adj, mask)
 
         # Take mean and max only for where atom exists.
@@ -198,18 +185,19 @@ class AtomTransformerPretrain(nn.Module):
         self.d_model = d_model
         self.transformer = Transformer(n_layers, n_heads, d_model, d_ff, res_p, att_p)
 
-        # atom_embedding_size = d_model - 17
+        feat_size = 6
         hyb_embedding_size = 64
         donac_embedding_size = 16
         spin_embedding_size = 16
-        atom_embedding_size = d_model - 64 - 16 - 16 - 1 - 1 - 1 - 1 - 2
+        atom_embedding_size = d_model - feat_size - hyb_embedding_size - donac_embedding_size - spin_embedding_size
+
         assert atom_embedding_size > 0, f'Atom embedding size should be > 0. Now {atom_embedding_size}'
         # 1 for aromaticity
         # 1 for formal charge
         # 1 for totalnumH
         # 1 for total valence
         # 2 for molecule features (NPR1, NPR2)
-        self.atom_embedding = nn.Embedding(num_unique_atoms + 1 + 1, atom_embedding_size) # +1 for dummy node
+        self.atom_embedding = nn.Embedding(num_unique_atoms + 1 + 1, atom_embedding_size) # +1 for dummy node, +1 for [PAD]
         self.hyb_embedding = nn.Linear(7, hyb_embedding_size, bias=False)
         self.donac_embedding = nn.Linear(2, donac_embedding_size, bias=False)
         self.spin_embedding = nn.Linear(2, spin_embedding_size, bias=False)
@@ -228,18 +216,15 @@ class AtomTransformerPretrain(nn.Module):
             nn.Linear(16, 1),
         )
     
-    # def forward(self, atom_idx, hyb, donac, spin, feat, pdist, sym, angle, adj, mask, out_mask, n_atoms):
     def forward(self, atom_idx, hyb, donac, spin, pdist, angle, adj, mask, out_mask, n_atoms):
-        a = self.atom_embedding(atom_idx + 1)
+        atom = self.atom_embedding(atom_idx + 1)
         hyb = self.hyb_embedding(hyb)
         donac = self.donac_embedding(donac)
         spin = self.spin_embedding(spin)
 
-        # x = torch.cat([feat, a, hyb, donac, spin], dim=-1)
-        x = torch.cat([a, hyb, donac, spin], dim=-1)
+        x = torch.cat([feat, atom, hyb, donac, spin], dim=-1)
         
-        # x : bsz x max_n_atoms x model
-        # x = self.transformer(x, pdist, sym, angle, adj, mask)
+        # x : bsz x max_n_atoms x d_model
         x = self.transformer(x, pdist, angle, adj, mask)
 
         # Take mean and max only for where atom exists.
@@ -257,6 +242,7 @@ class AtomTransformerPretrain(nn.Module):
 
 if __name__ == '__main__':
     bsz, n_atoms, d_model = 16, max_n_atoms, 128
+    
     mask = torch.randint(0, 1, [bsz, n_atoms, n_atoms]).bool().unsqueeze(1) # bsz x 1 x n_atoms x n_atoms
     out_mask = torch.randint(0, 1, [bsz, n_atoms])
     num_atoms = torch.randint(1, 10, [bsz])
@@ -273,6 +259,3 @@ if __name__ == '__main__':
 
     print('Model size')
     print(sum(param.numel() for param in att.parameters() if param.requires_grad))
-
-
-    pass

@@ -112,10 +112,6 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.5, 
     patience=15, threshold=0.005, threshold_mode='rel'
 )
-# scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    # optimizer, milestones=[20, 30, 40, 50, 60], gamma=0.5,
-# )
-# scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=10, after_scheduler=scheduler)
 
 train_dataset = SACData(idx=train_idx, augs=args.augs)
 val_dataset = SACData(idx=val_idx)
@@ -126,8 +122,6 @@ val_loader = DataLoader(
     val_dataset, num_workers=16, batch_size=config.bsz, shuffle=False, pin_memory=True, drop_last=False,
 )
 n_batch = len(train_loader)
-
-# scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=n_batch * 2, T_mult=2, eta_min=5e-7)
 
 optimizer.zero_grad()
 optimizer.step()
@@ -197,7 +191,6 @@ for epoch in range(1, 501):
         loss.backward()
         nn.utils.clip_grad_norm_(net.parameters(), 1)
         optimizer.step()
-
 
         if batch % 10 == 0:
             batch_gap_loss = running_gap_loss / 10.
