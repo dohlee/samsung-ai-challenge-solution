@@ -216,7 +216,7 @@ class AtomTransformerPretrain(nn.Module):
             nn.Linear(16, 1),
         )
     
-    def forward(self, atom_idx, hyb, donac, spin, pdist, angle, adj, mask, out_mask, n_atoms):
+    def forward(self, atom_idx, hyb, donac, spin, feat, pdist, angle, adj, mask, out_mask, n_atoms):
         atom = self.atom_embedding(atom_idx + 1)
         hyb = self.hyb_embedding(hyb)
         donac = self.donac_embedding(donac)

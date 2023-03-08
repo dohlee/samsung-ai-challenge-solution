@@ -21,27 +21,19 @@ from rdkit.Chem.rdmolfiles import CanonicalRankAtoms
 from openbabel import pybel as pb
 RDLogger.DisableLog('rdApp.*') # Suppress warnings from rdkit
 
-from sac2021.const import fp, ignored_uids, max_n_atoms, DUMMY_ATOM, a2i, hyb2int, bondtype2int
+from sac2021.const import ignored_uids, max_n_atoms, DUMMY_ATOM, a2i, hyb2int, bondtype2int
 
 class SACData(Dataset):
-    # self.version = '0.0.1'
-    # self.version = '0.0.2'
-    # self.version = '0.0.3' # normalize xyz features to have mu=0, std=1
-    # version = '0.0.4' # divide input features by sqrt(d_model)
-    # version = '0.0.5' # divide input features by sqrt(d_model)
-    # version = '0.0.6' # pairwise distance
-    # version = '0.0.7' # graph adjacency
-    # version = '0.0.8' # use dev data for train
-    # version = '0.0.9' # donor & acceptor
-    # version = '0.0.10' # molecular feature
+    version = '0.1.0'
 
-    version = '0.1.0' # Finalized.
-
-    def __init__(self, idx=None, augs=[], meta=fp['train_meta'], data=fp['train_data'], pretrain=False):
+    def __init__(
+            self,
+            meta,
+            data,
+            idx=None,
+            pretrain=False
+        ):
         super(SACData, self).__init__()
-        if pretrain:
-            meta = fp['pretrain_meta']
-            data = fp['pretrain_data']
         self.data_dir = data
 
         self.meta = pd.read_csv(meta)
@@ -55,14 +47,13 @@ class SACData(Dataset):
         fdefName = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
         self.factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
 
-        self.augs = augs
         self.pretrain = pretrain
 
     def __getitem__(self, i):
         m = self.meta[i]
 
         mol = Chem.SDMolSupplier(f'{self.data_dir}/{m.uid}.sdf')[0]
-        pb_mol = pb.readstring("smi", Chem.MolToSmiles(mol))
+        pb_mol = pb.readstring("smi", Chem.MolToSmiles(mol, isomericSmiles=False))
         conformer = mol.GetConformer()
 
         n_atoms = mol.GetNumAtoms()
@@ -196,6 +187,12 @@ class SACData(Dataset):
             'fp': fp,
         }
 
+        for k, v in item.items():
+            if torch.isnan(v).any():
+                print(k, 'has NaN value!')
+                print('INFO:')
+                print(m)
+
         if self.pretrain:
             item.update({
                 'homo': m['homo'],
@@ -275,23 +272,16 @@ class SACData(Dataset):
 
 
 class SACDataInfer(SACData):
-    # self.version = '0.0.1'
-    # self.version = '0.0.2'
-    # self.version = '0.0.3' # normalize xyz features to have mu=0, std=1
-    # version = '0.0.4' # divide input features by sqrt(d_model)
-    # version = '0.0.5' # divide input features by sqrt(d_model)
-    # version = '0.0.6' # pairwise distance
-    # version = '0.0.7' # graph adjacency
-    # version = '0.0.8' # use dev data for train
-    # version = '0.0.9' # donor & acceptor
-    # version = '0.0.10' # molecular feature
+    version = '0.1.0'
 
-    version = '0.1.0' # Finalized.
-    def __init__(self, idx=None, augs=[], meta=fp['test_meta'], data=fp['test_data'], pretrain=False):
+    def __init__(
+            self,
+            meta,
+            data,
+            idx=None,
+            pretrain=False
+        ):
         super(SACData, self).__init__()
-
-        self.augs = augs
-
         self.meta = pd.read_csv(meta)
         self.meta = self.meta[~self.meta.uid.isin(ignored_uids)].reset_index(drop=True)
         if idx is not None:
@@ -387,21 +377,15 @@ class SACDataInfer(SACData):
 if __name__ == '__main__':
     from tqdm import tqdm
 
-    dataset = SACData(pretrain=True)
-    loader = DataLoader(dataset, batch_size=1)
+    dataset = SACData(
+        meta='data/pretrain_metadata.csv',
+        data='data/pretrain_sdf',
+        pretrain=True
+    )
+    loader = DataLoader(dataset, batch_size=16, num_workers=16)
 
     for data in tqdm(loader):
-        # if torch.isnan(data['hyb']).any():
-            # print(data)
-        if torch.isnan(data['angle']).any():
-            # print(data['angle'])
-            print(data['uid'])
-
-        # xyz, target, mask, atom_idx = data['xyz'], data['target'], data['mask'], data['atom_idx']
-        # adj = data['adj']
-        # print(adj.shape)
-        # break
-        # print(data['target'])
+        pass
 
     print(f'len={len(dataset)}')
     print(SACData.version)

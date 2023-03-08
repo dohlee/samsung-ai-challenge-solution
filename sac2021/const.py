@@ -38,6 +38,10 @@ ignored_uids = [
     'gdb_24',
     'gdb_486',
     'PAMMAS',
+    'QUFCID',
+    'LOVWOI',
+    'QEYQUH',
+    'ENIGEO',
 ]
 
 hyb2int = {

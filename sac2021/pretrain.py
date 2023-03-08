@@ -27,10 +27,13 @@ def get_lr(optimizer):
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--meta', help='Path to metadata csv file.', required=True)
+    parser.add_argument('--data', help='Path to directory containing sdf files.', required=True)
     parser.add_argument('--output', '-o', required=True)
     parser.add_argument('--model-id', required=True)
     parser.add_argument('--fold', type=int, required=True)
     parser.add_argument('--loss', required=True)
+    parser.add_argument('--epochs', type=int, default=52)
     parser.add_argument('--bsz', type=int, default=64)
     parser.add_argument('--n-layers', type=int, default=24)
     parser.add_argument('--d-model', type=int, default=256)
@@ -38,7 +41,7 @@ def parse_arguments():
     parser.add_argument('--d-ff', type=int, default=2048)
     parser.add_argument('--lr', type=float, default=3e-5)
     parser.add_argument('--seed', type=int, default=42)
-    parser.add_argument('--augs', nargs='+', default=[])
+    parser.add_argument('--use-wandb', action='store_true', default=False)
     parser.add_argument('--debug', action='store_true', default=False)
 
     return parser.parse_args()
@@ -49,14 +52,15 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 os.environ["PYTHONHASHSEED"] = str(args.seed)
 torch.manual_seed(args.seed)
-torch.cuda.manual_seed(args.seed)  # type: ignore
-# torch.backends.cudnn.deterministic = True  # type: ignore
-# torch.backends.cudnn.benchmark = True  # type: ignore
+torch.cuda.manual_seed(args.seed)
+
+if not args.use_wandb:
+    os.environ['WANDB_MODE'] = 'disabled'
 
 if args.debug:
     os.environ['WANDB_MODE'] = 'offline'
 
-meta = pd.read_csv(const.fp['pretrain_meta'])
+meta = pd.read_csv(args.meta)
 meta = meta[~meta.uid.isin(const.ignored_uids)].reset_index(drop=True)
 
 losses = {
@@ -68,15 +72,14 @@ criterion = losses[args.loss]()
 mae = nn.L1Loss()
 
 # W&B configuration.
-wandb.init(project='sac', entity='dohlee')
+wandb.init(project='sac-solution', entity='dohlee', tags=['pretrain'])
 config = wandb.config
 config.update(args)
 config.update({'pretrained': False})
-# config.update({'pretrained_model': args.ckpt})
 config.update({'data_version': SACData.version})
 
+# Hold out 2.5% of the dataset for validation.
 cv = KFold(n_splits=40, shuffle=True, random_state=args.seed)
-
 for fold, (train_idx, val_idx) in enumerate(cv.split(meta), 1):
     if fold == args.fold:
         break
@@ -97,15 +100,24 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     patience=10, threshold=0.005, threshold_mode='abs'
 )
 
-train_dataset = SACData(idx=train_idx, augs=args.augs, pretrain=True)
-val_dataset = SACData(idx=val_idx, pretrain=True)
+train_dataset = SACData(
+    meta=args.meta,
+    data=args.data,
+    idx=train_idx,
+    pretrain=True
+)
+val_dataset = SACData(
+    meta=args.meta,
+    data=args.data,
+    idx=val_idx,
+    pretrain=True
+)
 train_loader = DataLoader(
     train_dataset, num_workers=16, batch_size=config.bsz, shuffle=True, pin_memory=True,
 )
 val_loader = DataLoader(
     val_dataset, num_workers=16, batch_size=config.bsz, shuffle=False, pin_memory=True, drop_last=False,
 )
-n_batch = len(train_loader)
 
 optimizer.zero_grad()
 optimizer.step()
