@@ -18,9 +18,8 @@ WIP
 - 아래의 데이터셋을 이용하여 HOMO 및 LUMO를 예측하는 멀티태스크 사전학습을 수행합니다.
     - [QM9](http://quantum-machine.org/datasets/) (n=133,246)
     - [OE62](https://www.nature.com/articles/s41597-020-0385-y) (n=61,191)
-
-    - Pretraining에 사용되는 molecule sdf 데이터의 메타데이터(`pretrain_metadata.csv`)는 [여기](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data/pretrain_metadata.csv)에서 다운로드 받을 수 있습니다.
-    - Pretraining을 위해 프로세싱 완료된 molecule sdf들을 모아 둔 디렉토리 `pretrain_sdf`는 [여기](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data/pretrain_sdf.tar.gz)에서 다운로드 받을 수 있습니다.
+- Pretraining에 사용되는 molecule sdf 데이터의 메타데이터(`pretrain_metadata.csv`)는 [여기](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data/pretrain_metadata.csv)에서 다운로드 받을 수 있습니다. 
+- Pretraining을 위해 프로세싱 완료된 molecule sdf들을 모아 둔 디렉토리 `pretrain_sdf`는 [여기](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data/pretrain_sdf.tar.gz)에서 다운로드 받을 수 있습니다.
 
 **Fine-tuning**
 - 사전학습된 stem을 이용합니다.
@@ -42,7 +41,7 @@ $ pip install sac2021
 
 ### Pretraining
 
-- 메타데이터 [`pretrain_metadata.csv`](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data/pretrain_metadata.csv)와 sdf 파일 디렉토리 [`pretrain-sdf`](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data/pretrain_sdf.tar.gz)를 다운로드 후, 아래 명령의 `--meta`와 `--data` 파라미터를 적절히 설정하여 사전학습을 진행합니다.
+- 메타데이터 [`pretrain_metadata.csv`](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data/pretrain_metadata.csv)와 sdf 파일 디렉토리 [`pretrain_sdf`](https://dohlee-bioinfo.sgp1.digitaloceanspaces.com/sac2021-data/pretrain_sdf.tar.gz)를 다운로드 후, 아래 명령의 `--meta`와 `--data` 파라미터를 적절히 설정하여 사전학습을 진행합니다.
 
 ```bash
 $ python -m sac2021.pretrain \
@@ -54,8 +53,17 @@ $ python -m sac2021.pretrain \
     --loss mse \
 ```
 
-학습 로그는 [이 Weight & Biases Project](https://wandb.ai/dohlee/sac-solution?workspace=user-dohlee)에서 확인 가능합니다.
+Pretraining 학습 로그는 [이 Weight & Biases Project](https://wandb.ai/dohlee/sac-solution?workspace=user-dohlee)에서 확인 가능합니다.
 
 ### Fine-tuning
-
-WIP
+- 학습 데이터 `traindev.csv`와 sdf 파일 디렉토리 `traindev_sdf`를 다운로드 후, 아래 명령의 `--meta`와 `--data` 파라미터를 적절히 설정하여 fine-tuning을 진행합니다.
+```bash
+$ python -m sac2021.finetune \
+    --meta [path/to/traindev.csv] \
+    --data [path/to/traindev_sdf] \
+    --ckpt [path/to/pretrained_checkpoint] \
+    --output [OUTPUT_CHECKPOINT] \ 
+    --model-id [ID] \ 
+    --fold 0 \
+    --loss mse
+```

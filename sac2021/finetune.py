@@ -5,7 +5,6 @@ import random
 import os
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 
@@ -16,7 +15,6 @@ from sklearn.model_selection import KFold
 
 import sac2021.const as const
 import sac2021.loss as loss
-from scheduler import GradualWarmupScheduler
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -26,11 +24,14 @@ def get_lr(optimizer):
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--output', '-o', required=True)
+    parser.add_argument('--meta', help='Path to metadata csv file.', required=True)
+    parser.add_argument('--data', help='Path to directory containing sdf files.', required=True)
     parser.add_argument('--ckpt', required=True)
+    parser.add_argument('--output', '-o', required=True)
     parser.add_argument('--model-id', required=True)
     parser.add_argument('--fold', type=int, required=True)
     parser.add_argument('--loss', required=True)
+    parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--bsz', type=int, default=64)
     parser.add_argument('--n-layers', type=int, default=24)
     parser.add_argument('--d-model', type=int, default=256)
@@ -38,9 +39,7 @@ def parse_arguments():
     parser.add_argument('--d-ff', type=int, default=2048)
     parser.add_argument('--lr', type=float, default=3e-5)
     parser.add_argument('--seed', type=int, default=42)
-    parser.add_argument('--res-p', type=float, default=0.0)
-    parser.add_argument('--att-p', type=float, default=0.0)
-    parser.add_argument('--augs', nargs='+', default=[])
+    parser.add_argument('--use-wandb', action='store_true', default=False)
     parser.add_argument('--debug', action='store_true', default=False)
 
     return parser.parse_args()
@@ -58,10 +57,8 @@ torch.cuda.manual_seed(args.seed)  # type: ignore
 if args.debug:
     os.environ['WANDB_MODE'] = 'offline'
 
-meta = pd.read_csv(const.fp['train_meta'])
+meta = pd.read_csv(args.meta)
 meta = meta[~meta.uid.isin(const.ignored_uids)].reset_index(drop=True)
-
-td_meta = meta[(meta.uid.str.startswith('train')) | (meta.uid.str.startswith('dev'))].reset_index(drop=True)
 
 losses = {
     'mse': nn.MSELoss,
@@ -72,16 +69,16 @@ criterion = losses[args.loss]()
 mae = nn.L1Loss()
 
 # W&B configuration.
-wandb.init(project='sac', entity='dohlee')
+wandb.init(project='sac-solution', entity='dohlee', tags=['finetune'])
 config = wandb.config
 config.update(args)
-config.update({'pretrained': False})
+config.update({'pretrained': True})
 config.update({'pretrained_model': args.ckpt})
 config.update({'data_version': SACData.version})
 
+# Train-val split (39:1)
 cv = KFold(n_splits=40, shuffle=True, random_state=args.seed)
-
-for fold, (train_idx, val_idx) in enumerate(cv.split(td_meta), 1):
+for fold, (train_idx, val_idx) in enumerate(cv.split(meta), 1):
     if fold == args.fold:
         break
 
@@ -91,7 +88,13 @@ train_idx = [idx for idx in range(len(meta)) if idx not in val_idx_set]
 print('train', len(train_idx))
 print('val', len(val_idx))
 
-net = AtomTransformer(config.n_layers, config.n_heads, config.d_model, config.d_ff, res_p=args.res_p, att_p=args.att_p)
+net = AtomTransformer(
+    config.n_layers,
+    config.n_heads,
+    config.d_model,
+    config.d_ff
+)
+
 # Load checkpoint.
 ckpt = torch.load(args.ckpt)
 net.load_state_dict(ckpt['net'], strict=False)
@@ -114,11 +117,19 @@ wandb.watch(net, log='all')
 optimizer = torch.optim.AdamW(net.parameters(), lr=args.lr)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.5, 
-    patience=15, threshold=0.005, threshold_mode='rel'
+    patience=15, threshold=0.005, threshold_mode='abs'
 )
 
-train_dataset = SACData(idx=train_idx, augs=args.augs)
-val_dataset = SACData(idx=val_idx)
+train_dataset = SACData(
+    meta=args.meta,
+    data=args.data,
+    idx=train_idx,
+)
+val_dataset = SACData(
+    meta=args.meta,
+    data=args.data,
+    idx=val_idx
+)
 train_loader = DataLoader(
     train_dataset, num_workers=16, batch_size=config.bsz, shuffle=True, pin_memory=True,
 )

@@ -90,7 +90,12 @@ train_idx = [idx for idx in range(len(meta)) if idx not in val_idx_set]
 print('train', len(train_idx))
 print('val', len(val_idx))
 
-net = AtomTransformer(config.n_layers, config.n_heads, config.d_model, config.d_ff)
+net = AtomTransformer(
+    config.n_layers,
+    config.n_heads,
+    config.d_model,
+    config.d_ff
+)
 net.cuda()
 
 wandb.watch(net, log='all')
@@ -123,7 +128,7 @@ optimizer.zero_grad()
 optimizer.step()
 
 best_val_mae, val_mae = 10000, 10000
-for epoch in range(1, 71):
+for epoch in range(1, args.epochs + 1):
     scheduler.step(val_mae)
 
     # losses
