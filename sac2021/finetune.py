@@ -37,6 +37,8 @@ def parse_arguments():
     parser.add_argument('--d-model', type=int, default=256)
     parser.add_argument('--n-heads', type=int, default=16)
     parser.add_argument('--d-ff', type=int, default=2048)
+    parser.add_argument('--res-p', type=float, default=0.2)
+    parser.add_argument('--att-p', type=float, default=0.2)
     parser.add_argument('--lr', type=float, default=3e-5)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--use-wandb', action='store_true', default=False)
@@ -92,7 +94,9 @@ net = AtomTransformer(
     config.n_layers,
     config.n_heads,
     config.d_model,
-    config.d_ff
+    config.d_ff,
+    res_p=args.res_p,
+    att_p=args.att_p,
 )
 
 # Load checkpoint.
