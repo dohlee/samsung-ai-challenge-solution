@@ -12,6 +12,10 @@
 
 분자의 원자 간 거리 행렬을 바탕으로 분자의 3차원 구조를 반영한 Transformer 모델을 사용하였습니다. 먼저 각 분자를 다음과 같이 featurize 하였습니다.
 
+분자의 3차원 구조 정보
+
+- 원자 쌍의 pairwise distance matrix (max_n_atoms x max_n_atoms) 
+
 WIP
 
 ### 학습 방법
