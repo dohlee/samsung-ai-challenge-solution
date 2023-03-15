@@ -26,7 +26,7 @@
 - NPR1 (Normalized principal moments ratio 1, `rdkit.Chem.Descriptors3D.NPR1` 활용)
 - NPR2 (Normalized principal monents ratio 2, `rdkit.Chem.Descriptors3D.NPR2` 활용)
 
-분자의 3차원 구조 정보
+**분자의 3차원 구조 feature**
 - 원자 쌍의 pairwise distance matrix (max_n_atoms x max_n_atoms)
 - 원자 간 결합 정보를 나타내는 Adjacency matrix
 - 결합각(bond angle) 및 이면각(torsion angle) 정보
