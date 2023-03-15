@@ -12,11 +12,24 @@
 
 분자의 원자 간 거리 행렬을 바탕으로 분자의 3차원 구조를 반영한 Transformer 모델을 사용하였습니다. 먼저 각 분자를 다음과 같이 featurize 하였습니다.
 
+**원자 수준 feature**
+- H, B, C, N, O, F, S, Si, P, Cl, Br, I 원자를 one-hot encoding (one-hot, 12-dim)
+- Hybridization (one-hot, 7-dim)
+- Aromatic ring 에 속한 atom인지 여부 (binary, 1-dim)
+- 형식 전하 (1-dim)
+- 결합된 수소 원자의 개수 (1-dim)
+- 원자가 (1-dim)
+- Donor/Acceptor status (one-hot, 2-dim)
+- Spin multiplicity (one-hot, 2-dim)
+
+**분자 수준 feature**
+- NPR1 (Normalized principal moments ratio 1, `rdkit.Chem.Descriptors3D.NPR1` 활용)
+- NPR2 (Normalized principal monents ratio 2, `rdkit.Chem.Descriptors3D.NPR2` 활용)
+
 분자의 3차원 구조 정보
-
-- 원자 쌍의 pairwise distance matrix (max_n_atoms x max_n_atoms) 
-
-WIP
+- 원자 쌍의 pairwise distance matrix (max_n_atoms x max_n_atoms)
+- 원자 간 결합 정보를 나타내는 Adjacency matrix
+- 결합각(bond angle) 및 이면각(torsion angle) 정보
 
 ### 학습 방법
 
