@@ -8,9 +8,9 @@
 
 ## 2. 접근
 
-### 모델 설명
+### 입력 feature 설명
 
-분자의 원자 간 거리 행렬을 바탕으로 분자의 3차원 구조를 반영한 Transformer 모델을 사용하였습니다. 먼저 각 분자를 다음과 같이 featurize 하였습니다.
+각 분자를 다음과 같이 featurize 하였습니다.
 
 **원자 수준 feature**
 - H, B, C, N, O, F, S, Si, P, Cl, Br, I 원자를 one-hot encoding (one-hot, 12-dim)
@@ -49,6 +49,10 @@
 - Optimizer = `AdamW(lr=3e-5)`
 - Scheduler = `ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=15, threshold=0.005, threshold_mode='rel')`
 - Batch size = 64
+
+### 모델 설명
+
+분자의 원자 간 거리 행렬을 바탕으로 분자의 3차원 구조를 반영한 Transformer 모델을 사용하였습니다.
 
 ## 3. 설치 및 사용법
 본 솔루션 코드 및 모델은 PyPI에 배포되어 있습니다. 모델은 다음과 같이 설치할 수 있습니다.
