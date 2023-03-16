@@ -31,6 +31,10 @@
 - 원자 간 결합 정보를 나타내는 Adjacency matrix
 - 결합각(bond angle) 및 이면각(torsion angle) 정보
 
+### 모델 설명
+
+분자의 원자 간 거리 행렬을 바탕으로 분자의 3차원 구조를 반영한 Transformer 모델을 사용하였습니다.
+
 ### 학습 방법
 
 **Pretraining**
@@ -49,10 +53,6 @@
 - Optimizer = `AdamW(lr=3e-5)`
 - Scheduler = `ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=15, threshold=0.005, threshold_mode='rel')`
 - Batch size = 64
-
-### 모델 설명
-
-분자의 원자 간 거리 행렬을 바탕으로 분자의 3차원 구조를 반영한 Transformer 모델을 사용하였습니다.
 
 ## 3. 설치 및 사용법
 본 솔루션 코드 및 모델은 PyPI에 배포되어 있습니다. 모델은 다음과 같이 설치할 수 있습니다.
