@@ -37,6 +37,13 @@
 
 ![model](/img/sac_model.png)
 
+- Transformer encoder stem 세부사항
+    - `n_layers=24`
+    - `d_model=256`
+    - `n_heads=16`
+- Prediction head 세부사항
+    - `Linear(3*d_model, 16) -> ReLU -> Linear(16, 1)`
+
 ### 학습 방법
 
 **Pretraining**
