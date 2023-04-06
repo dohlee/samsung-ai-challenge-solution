@@ -99,3 +99,5 @@ $ python -m sac2021.finetune \
     --fold 0 \
     --loss mse
 ```
+
+Fine-tuning 학습 로그는 [이 Weight & Biases Project](https://wandb.ai/dohlee/sac-solution?workspace=user-dohlee)에서 확인 가능합니다.
